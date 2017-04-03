@@ -1,0 +1,22 @@
+---
+- name: Install OVS DKMS Package
+  apt:
+    deb: "{{ ovn_packages_dir }}/openvswitch-datapath-dkms_2.7.0-1_all.deb"
+
+- name: "Install Base OVN Packages"
+  apt:
+    deb: "{{ ovn_packages_dir }}/{{ item }}"
+  with_items:
+    - "openvswitch-common_2.7.0-1_amd64.deb"
+    - "openvswitch-switch_2.7.0-1_amd64.deb"
+    - "ovn-common_2.7.0-1_amd64.deb"
+    - "ovn-host_2.7.0-1_amd64.deb"
+  tags:
+    - "ovn_packages"
+
+- name: "Create Integration Bridge"
+  openvswitch_bridge:
+    bridge: br-int
+    state: present
+    fail_mode: secure
+

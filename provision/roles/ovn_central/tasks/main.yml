@@ -1,0 +1,66 @@
+---
+- name: "Create Root SSH Directory"
+  file:
+    path: /root/.ssh
+    state: directory
+    mode: 0700
+
+- name: "Copy Authorized Key"
+  copy:
+    remote_src: true
+    src: /vagrant/keys/root_id.pub
+    dest: /root/.ssh/authorized_keys
+    owner: root
+    group: root
+    mode: 0600
+
+- name: "Install OVN Central Package"
+  apt:
+    deb: "{{ ovn_packages_dir }}/ovn-central_2.7.0-1_amd64.deb"
+
+- name: "Create Certificate Authority"
+  command: ovs-pki init
+  args:
+    creates: "/var/lib/openvswitch/pki/switchca/cacert.pem"
+
+- name: "Copy CA Certificate"
+  copy:
+    remote_src: true
+    src: /var/lib/openvswitch/pki/switchca/cacert.pem
+    dest: /etc/openvswitch/cacert.pem
+
+- name: "Create OVN Northbound Certificate Request"
+  command: ovs-pki req ovnnb
+  args:
+    creates: /etc/openvswitch/ovnnb-req.pem
+    chdir: /etc/openvswitch
+
+- name: "Self Signed OVN Northbound Certificate"
+  command: ovs-pki self-sign ovnnb
+  args:
+    creates: /etc/openvswitch/ovnnb-cert.pem
+    chdir: /etc/openvswitch
+
+- name: "Create OVN Southbound Certificate Request"
+  command: ovs-pki req ovnsb
+  args:
+    creates: /etc/openvswitch/ovnsb-req.pem
+    chdir: /etc/openvswitch
+
+- name: "Self Signed OVN Southbound Certificate"
+  command: ovs-pki self-sign ovnsb
+  args:
+    creates: /etc/openvswitch/ovnsb-cert.pem
+    chdir: /etc/openvswitch
+
+- name: "Configure OVSDB Certificates"
+  command: "ovn-{{ item }}ctl set-ssl /etc/openvswitch/ovn{{ item }}-privkey.pem /etc/openvswitch/ovn{{ item }}-cert.pem /etc/openvswitch/cacert.pem"
+  with_items:
+  - "nb"
+  - "sb"
+
+- name: "Start OVSDB Listeners"
+  command: "ovn-{{ item.name }}ctl set-connection pssl:{{ item.port }}"
+  with_items:
+  - { name: "nb", port: "6641" }
+  - { name: "sb", port: "6642" }

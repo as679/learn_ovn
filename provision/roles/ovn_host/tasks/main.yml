@@ -1,0 +1,39 @@
+---
+- name: "Create Certificate Request"
+  command: "ovs-pki req {{ ansible_hostname }}"
+  args:
+    creates: "/etc/openvswitch/{{ ansible_hostname }}-req.pem"
+    chdir: /etc/openvswitch
+
+- name: "Copy Certificate Request"
+  copy: 
+    remote_src: true
+    src: "/etc/openvswitch/{{ ansible_hostname }}-req.pem"
+    dest: "/vagrant/certs/{{ ansible_hostname }}-req.pem" 
+
+- name: "Sign Certificate Request"
+  command: "ssh -oStrictHostKeyChecking=no -i/vagrant/keys/root_id {{ ovn_central_ip }} 'cd /vagrant/certs; ovs-pki -b sign {{ ansible_hostname }} switch'"
+  args:
+    creates: "/vagrant/certs/{{ ansible_hostname }}-cert.pem"
+
+- name: "Copy Certificate"
+  copy: 
+    remote_src: true
+    src: "/vagrant/certs/{{ ansible_hostname }}-cert.pem" 
+    dest: "/etc/openvswitch/{{ ansible_hostname }}-cert.pem"
+
+- name: "Configure Southbound Connectivity"
+  command: "ovs-vsctl set open . external-ids:ovn-remote=ssl:{{ ovn_central_ip }}:6642"
+
+- name: "Configure Encapsulation Type"
+  command: "ovs-vsctl set open . external-ids:ovn-encap-type=geneve"
+
+- name: "Configure Encapsulation Interface"
+  command: "ovs-vsctl set open . external-ids:ovn-encap-ip={{ ovn_encap_ip }}"
+
+- name: "Configure Controller Default Options"
+  template:
+    src: ovn_host_defaults.j2
+    dest: "/etc/default/ovn-host"
+  notify:
+  - restart ovn_host

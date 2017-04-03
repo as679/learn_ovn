@@ -1,0 +1,15 @@
+---
+- name: "Install Base Packages"
+  apt:
+    state: "present"
+    update_cache: "yes"
+    name: "{{ item }}"
+    install_recommends: "yes"
+  with_items:
+    - "python-six"
+    - "python2.7"
+    - "build-essential"
+    - "dkms"
+  tags:
+    - "packages"
+

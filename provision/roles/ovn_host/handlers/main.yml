@@ -1,0 +1,5 @@
+---
+- name: restart ovn_host
+  service:
+    name: ovn-host
+    state: restarted

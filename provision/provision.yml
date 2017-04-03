@@ -1,0 +1,15 @@
+---
+- hosts: all
+  become: "yes"
+  gather_facts: False
+  roles:
+  - pre_run
+
+- hosts: all
+  become: "yes"
+  roles:
+  - common
+  - ovn
+  - { role: ovn_central, when: ovn_central is defined }
+  - { role: ovn_host, when: ovn_central is not defined }
+
